@@ -1,4 +1,4 @@
-if RUBY_VERSION < "1.9"
+if RUBY_VERSION < "1.9.2"
   # Backports: http://github.com/marcandre/backports
   begin
     # Gem load
