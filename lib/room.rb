@@ -4,13 +4,6 @@ module InteractiveFiction
     attr_writer :world
     def initialize(name, description)
       super
-
-      @exits = Parser.parse_room_exits @description["Exits"]
-
-      @title = @description["Title"].rstrip.end_with!(".")
-      @long_description = @description["Description"]
-      @objects_str = @description["Objects"]
-
       @seen = false
     end
 

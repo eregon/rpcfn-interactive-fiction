@@ -2,6 +2,7 @@ module InteractiveFiction
   class Parser
     TAB = " "*2
     SEPARATOR = /:(?=\s)/
+    COMMA_SEPARATOR = ", "
     NO_INDENT = /\A(?!\s)/
     GROUP_TITLE = /\A(\w+)(?:\s(.\w+))?:\z/
 
@@ -22,7 +23,11 @@ module InteractiveFiction
       lines.slice_before(NO_INDENT).reject { |o| o.all?(&:empty?) }.inject([]) { |objects,lines|
         lines.shift =~ GROUP_TITLE
         type, name = $1, $2
-        objects << InteractiveFiction.const_get(type).new(name, parse_contents(lines))
+        objects << if self.respond_to?("parse_#{type.downcase}")
+          send("parse_#{type.downcase}", name, parse_contents(lines))
+        else
+          InteractiveFiction.const_get(type).new(name, parse_contents(lines))
+        end
       }
     end
 
@@ -47,12 +52,26 @@ module InteractiveFiction
         if exit.size > 1 and code = exit.join and code =~ BEGIN_CODE and code =~ END_CODE
           # enter to @grate_chamber guarded by:
           code =~ /(\w+) to (.+) guarded by\n/
-          h[$1] = [$2, parse_code($')]
+          h[$1] = [$2, Parser.parse_code($')]
         else
           dir, to, room = exit.first.split(ROOM_EXIT_SEPARATOR)
           h[dir] = room
         end
       }
+    end
+
+    def parse_room(name, description)
+      Room.new name,
+        :exits => Parser.parse_room_exits(description["Exits"]),
+        :title => description["Title"].rstrip.end_with!("."),
+        :long_description => description["Description"],
+        :objects_str => description["Objects"]
+    end
+
+    def parse_object(name, description)
+      Object.new name,
+        :terms => description["Terms"].split(COMMA_SEPARATOR),
+        :long_description => description["Description"]
     end
   end
 end

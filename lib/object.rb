@@ -3,11 +3,6 @@ module InteractiveFiction
     SEPARATOR = ", "
     NAME_TOKEN = "$"
     attr_reader :terms
-    def initialize(name, description)
-      super
-      @terms = @description["Terms"].split(SEPARATOR)
-      @long_description = @description["Description"]
-    end
 
     def small_description
       @terms.first
