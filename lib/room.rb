@@ -2,10 +2,6 @@ module InteractiveFiction
   class Room < AbstractObject
     attr_reader :exits, :long_description
     attr_writer :world
-    def initialize(name, description)
-      super
-      @seen = false
-    end
 
     def objects
       @objects ||= if objects = @objects_str
@@ -20,7 +16,7 @@ module InteractiveFiction
     end
 
     def description
-      if @seen
+      if (@seen ||= false)
         "You're #{@title}"
       else
         look

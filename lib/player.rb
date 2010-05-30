@@ -3,7 +3,6 @@ module InteractiveFiction
     def initialize(world)
       @world = world
       @inventory = []
-
       @blackboard = {}
     end
 

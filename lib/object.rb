@@ -1,15 +1,10 @@
 module InteractiveFiction
   class Object < AbstractObject
-    SEPARATOR = ", "
     NAME_TOKEN = "$"
-    attr_reader :terms
+    attr_reader :terms, :long_description
 
     def small_description
       @terms.first
-    end
-
-    def long_description
-      @long_description
     end
 
     class << self

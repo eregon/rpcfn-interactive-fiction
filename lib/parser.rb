@@ -1,14 +1,16 @@
 module InteractiveFiction
   class Parser
     TAB = " "*2
-    SEPARATOR = /:(?=\s)/
-    COMMA_SEPARATOR = ", "
     NO_INDENT = /\A(?!\s)/
+
+    KEY_VALUE_SEPARATOR = /:(?=\s)/
+    LIST_SEPARATOR = ", "
+    ROOM_EXIT_SEPARATOR = " "
+
     GROUP_TITLE = /\A(\w+)(?:\s(.\w+))?:\z/
 
     BEGIN_CODE = /^#{Regexp.escape("{{{")}/
     END_CODE = /#{Regexp.escape("}}}")}$/
-    ROOM_EXIT_SEPARATOR = " "
 
     def initialize(file)
       @file = file
@@ -33,7 +35,7 @@ module InteractiveFiction
 
     def parse_contents(lines)
       lines.map { |l| unindent(l) }.slice_before(NO_INDENT).each_with_object({}) { |key_value, contents|
-        key, *value = key_value.map(&:strip).join("\n").split(SEPARATOR)
+        key, *value = key_value.map(&:strip).join("\n").split(KEY_VALUE_SEPARATOR)
         value = unindent value.join.lstrip
 
         contents[key] = value
@@ -60,18 +62,33 @@ module InteractiveFiction
       }
     end
 
-    def parse_room(name, description)
+    def parse_room(name, desc)
       Room.new name,
-        :exits => Parser.parse_room_exits(description["Exits"]),
-        :title => description["Title"].rstrip.end_with!("."),
-        :long_description => description["Description"],
-        :objects_str => description["Objects"]
+        :exits => Parser.parse_room_exits(desc["Exits"]),
+        :title => desc["Title"].rstrip.end_with!("."),
+        :long_description => desc["Description"],
+        :objects_str => desc["Objects"]
     end
 
-    def parse_object(name, description)
+    def parse_object(name, desc)
       Object.new name,
-        :terms => description["Terms"].split(COMMA_SEPARATOR),
-        :long_description => description["Description"]
+        :terms => desc["Terms"].split(LIST_SEPARATOR),
+        :long_description => desc["Description"]
+    end
+
+    def parse_action(name, desc)
+      Action.new name,
+        :commands => desc["Terms"].split(LIST_SEPARATOR),
+        :code => Parser.parse_code(desc["Code"])
+    end
+
+    def parse_synonyms(name, desc)
+      synonyms = desc.each_pair.with_object({}) { |(full, synonym), synonyms|
+        synonyms[full] = synonym.split(LIST_SEPARATOR)
+      }
+      Synonyms.new name,
+        :synonyms => synonyms,
+        :all_synonyms => synonyms.values.reduce(:+)
     end
   end
 end
