@@ -1,3 +1,4 @@
+require_relative "abstract_object"
 module InteractiveFiction
   class Synonyms < AbstractObject
     def get_full_command(synonym)

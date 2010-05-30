@@ -1,7 +1,7 @@
 module InteractiveFiction
   class Parser
-    TAB = " "*2
-    NO_INDENT = /\A(?!\s)/
+    INDENT = " "*2
+    NO_INDENT = /\A(?!#{INDENT})/
 
     KEY_VALUE_SEPARATOR = /:(?=\s)/
     LIST_SEPARATOR = ", "
@@ -16,45 +16,37 @@ module InteractiveFiction
       @file = file
     end
 
-    def unindent(str)
-      str.sub(/\A#{TAB}/,'')
-    end
-
     def parse
-      lines = IO.read(@file).lines.map(&:chomp)
-      lines.slice_before(NO_INDENT).reject { |o| o.all?(&:empty?) }.inject([]) { |objects,lines|
+      IO.read(@file).lines.map(&:chomp).
+      slice_before(NO_INDENT).reject { |o| o.all?(&:empty?) }.inject([]) { |objects, lines|
         lines.shift =~ GROUP_TITLE
-        type, name = $1, $2
-        objects << if self.respond_to?("parse_#{type.downcase}")
-          send("parse_#{type.downcase}", name, parse_contents(lines))
-        else
-          InteractiveFiction.const_get(type).new(name, parse_contents(lines))
-        end
+        type, name = $~.captures # With 1.8, we can't use Regexp named groups
+        objects << send("parse_#{type.downcase}", name, parse_contents(lines))
       }
     end
 
     def parse_contents(lines)
-      lines.map { |l| unindent(l) }.slice_before(NO_INDENT).each_with_object({}) { |key_value, contents|
+      lines.map(&:unindent).slice_before(NO_INDENT).each_with_object({}) { |key_value, contents|
         key, *value = key_value.map(&:strip).join("\n").split(KEY_VALUE_SEPARATOR)
-        value = unindent value.join.lstrip
 
-        contents[key] = value
+        contents[key] = value.join.lstrip.unindent
       }
     end
 
-    def Parser.parse_code(code)
-      code.lines.to_a[1...-1].join.
-      gsub(/\bblackboard\b/, '@blackboard') # Very weird bug, the method call fail if we add actions ???
+    def parse_code(code)
+      code =~ /#{BEGIN_CODE}(.+)#{END_CODE}/m
+      $1.gsub(/\bblackboard\b/, 'self.blackboard')
+      # Very weird bug, the method call fail if we add actions ???
       # Else we get: "undefined method `[]' for nil:NilClass (NoMethodError)"
-      # Apparently instance_eval consider blackboard as a local var in this case
+      # Apparently instance_eval consider blackboard as a local var (with a nil value) in this case
     end
 
-    def Parser.parse_room_exits(text)
+    def parse_room_exits(text)
       text.lines.slice_before(/\A\w+ to/).each_with_object({}) { |exit, h|
         if exit.size > 1 and code = exit.join and code =~ BEGIN_CODE and code =~ END_CODE
           # enter to @grate_chamber guarded by:
           code =~ /(\w+) to (.+) guarded by\n/
-          h[$1] = [$2, Parser.parse_code($')]
+          h[$1] = [$2, parse_code($')]
         else
           dir, to, room = exit.first.split(ROOM_EXIT_SEPARATOR)
           h[dir] = room
@@ -64,22 +56,24 @@ module InteractiveFiction
 
     def parse_room(name, desc)
       Room.new name,
-        :exits => Parser.parse_room_exits(desc["Exits"]),
+        :exits => parse_room_exits(desc["Exits"]),
         :title => desc["Title"].rstrip.end_with!("."),
         :long_description => desc["Description"],
-        :objects_str => desc["Objects"]
+        :objects_names => (desc["Objects"] || "").split("\n")
     end
 
     def parse_object(name, desc)
+      terms = desc["Terms"].split(LIST_SEPARATOR)
       Object.new name,
-        :terms => desc["Terms"].split(LIST_SEPARATOR),
+        :terms => terms,
+        :small_description => terms.first,
         :long_description => desc["Description"]
     end
 
     def parse_action(name, desc)
       Action.new name,
         :commands => desc["Terms"].split(LIST_SEPARATOR),
-        :code => Parser.parse_code(desc["Code"])
+        :code => parse_code(desc["Code"])
     end
 
     def parse_synonyms(name, desc)

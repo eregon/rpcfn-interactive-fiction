@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
-Dir[File.join(File.expand_path("../../lib",__FILE__), "*.rb")].each { |f| require f }
+require File.expand_path("../../lib/main", __FILE__)
 
 module InteractiveFiction
   class Game

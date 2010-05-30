@@ -11,9 +11,10 @@ if RUBY_VERSION < "1.9.2"
   end
 end
 
+Dir[File.join(File.dirname(__FILE__), "*.rb")].each { |f|
+  require f unless f == __FILE__
+}
+
 if __FILE__ == $0
-  Dir[File.join(File.dirname(__FILE__), "*.rb")].each { |f|
-    require f unless f == __FILE__
-  }
   puts InteractiveFiction::Parser.new(File.expand_path("../../data/petite_cave.if", __FILE__)).parse
 end

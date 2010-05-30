@@ -1,14 +1,9 @@
+require_relative "abstract_object"
 module InteractiveFiction
   class Room < AbstractObject
-    attr_reader :exits, :long_description
     attr_writer :world
-
     def objects
-      @objects ||= if objects = @objects_str
-        objects.split("\n").map { |name| Object.find(name, @world.objects) }
-      else
-        []
-      end
+      @objects ||= @objects_names.map { |name| Object.find(name, @world.objects) }
     end
 
     def enter
@@ -16,11 +11,7 @@ module InteractiveFiction
     end
 
     def description
-      if (@seen ||= false)
-        "You're #{@title}"
-      else
-        look
-      end
+      (@seen ||= false) ? "You're #{@title}" : look
     end
 
     def look
@@ -32,15 +23,11 @@ module InteractiveFiction
     end
 
     def >> object
-      objects.delete(object)
+      objects.delete object
     end
 
-    class << self
-      def find(room_name, rooms)
-        rooms.find { |room|
-          room.name == room_name
-        }
-      end
+    def Room.find(room_name, rooms)
+      super(room_name, rooms, :name)
     end
   end
 end
